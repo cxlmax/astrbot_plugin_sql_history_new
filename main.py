@@ -139,7 +139,7 @@ class MySQLPlugin(Star):
                         json.dumps(sender_data, ensure_ascii=False),
                         event.message_str,
                         json.dumps(msg.raw_message, ensure_ascii=False) if msg.raw_message else None,
-                        int(msg.timestamp * 1000  ) 
+                        int(msg.timestamp) 
                     ))
 
             logger.debug(f"[MySQL日志插件] 已记录消息: {msg.message_id}")
