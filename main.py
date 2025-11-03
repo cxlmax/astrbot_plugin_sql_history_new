@@ -74,7 +74,7 @@ class MySQLPlugin(Star):
                                 sender        JSON         NOT NULL,
                                 message_str   TEXT         NOT NULL,
                                 raw_message   LONGTEXT,
-                                timestamp     INT          NOT NULL,
+                                timestamp     BIGINT       NOT NULL COMMENT '毫秒级时间戳',
                                 INDEX idx_session_id (session_id),
                                 INDEX idx_timestamp (timestamp),
                                 INDEX idx_platform_type (platform_type)
@@ -139,7 +139,7 @@ class MySQLPlugin(Star):
                         json.dumps(sender_data, ensure_ascii=False),
                         event.message_str,
                         json.dumps(msg.raw_message, ensure_ascii=False) if msg.raw_message else None,
-                        msg.timestamp
+                        int(msg.timestamp) * 1000  
                     ))
 
             logger.debug(f"[MySQL日志插件] 已记录消息: {msg.message_id}")
