@@ -5,6 +5,7 @@ from astrbot import logger
 import aiomysql
 import asyncio
 import json
+from datetime import datetime
 from typing import Optional
 
 
@@ -64,21 +65,19 @@ class MySQLPlugin(Star):
                 async with self.pool.acquire() as conn:
                     async with conn.cursor() as cursor:
                         await cursor.execute("""
-                            CREATE TABLE IF NOT EXISTS messages
-                            (
-                                message_id    VARCHAR(255) PRIMARY KEY,
-                                platform_type VARCHAR(50)  NOT NULL,
-                                self_id       VARCHAR(255) NOT NULL,
-                                session_id    VARCHAR(255) NOT NULL,
-                                group_id      VARCHAR(255),
-                                sender        JSON         NOT NULL,
-                                message_str   TEXT         NOT NULL,
-                                raw_message   LONGTEXT,
-                                timestamp     BIGINT       NOT NULL COMMENT '毫秒级时间戳',
-                                INDEX idx_session_id (session_id),
-                                INDEX idx_timestamp (timestamp),
-                                INDEX idx_platform_type (platform_type)
-                            )
+
+                        CREATE TABLE IF NOT EXISTS `messages`  (
+                            `id` bigint NOT NULL AUTO_INCREMENT,
+                            `message_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                            `platform_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                            `self_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                            `session_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                            `group_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+                            `sender` json NOT NULL,
+                            `message_str` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                            `raw_message` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL,
+                            `timestamp` timestamp NOT NULL,
+                            PRIMARY KEY (`id` DESC) USING BTREE)
                         """)
 
                 self._init_success = True
@@ -117,6 +116,19 @@ class MySQLPlugin(Star):
 
             async with self.pool.acquire() as conn:
                 async with conn.cursor() as cursor:
+                    timestamp_value = msg.timestamp
+                    formatted_timestamp = None
+                    if timestamp_value is not None:
+                        try:
+                            timestamp_float = float(timestamp_value)
+                            if timestamp_float > 1_000_000_000_000:
+                                timestamp_float /= 1000.0
+                            formatted_timestamp = datetime.fromtimestamp(timestamp_float).strftime("%Y-%m-%d %H:%M:%S")
+                        except (TypeError, ValueError):
+                            logger.warning(f"[MySQL日志插件] 无法解析消息时间戳: {timestamp_value}")
+                    if formatted_timestamp is None:
+                        formatted_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
                     # 使用 INSERT IGNORE 避免主键冲突
                     await cursor.execute("""
                         INSERT IGNORE INTO messages (
@@ -139,7 +151,7 @@ class MySQLPlugin(Star):
                         json.dumps(sender_data, ensure_ascii=False),
                         event.message_str,
                         json.dumps(msg.raw_message, ensure_ascii=False) if msg.raw_message else None,
-                        int(msg.timestamp) 
+                        formatted_timestamp
                     ))
 
             logger.debug(f"[MySQL日志插件] 已记录消息: {msg.message_id}")
