@@ -1,0 +1,5 @@
+name: mysql_logger
+desc: MySQL存储聊天记录,群史官,2025.11最新版
+version: v1.0
+author: LW&cxl
+repo: https://github.com/cxlmax/astrbot_plugin_sql_history_new.git
